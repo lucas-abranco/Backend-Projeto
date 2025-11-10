@@ -1,3 +1,4 @@
+// Caminho: projeto-back/src/users/users.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,9 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
+  /**
+   * Cria um novo utilizador (Cliente).
+   */
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const { name, cpf, phone, email, password } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -29,12 +33,22 @@ export class UsersService {
     return result;
   }
 
+  /**
+   * Encontra um utilizador pelo e-mail (usado para o LOGIN).
+   * Usa QueryBuilder para selecionar explicitamente a senha.
+   */
   async findOneByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository
+      .createQueryBuilder('user') // Cria um construtor de query para 'user'
+      .where('user.email = :email', { email }) // Filtra pelo e-mail
+      .addSelect('user.password') // Garante que a coluna 'password' seja incluída
+      .getOne(); // Executa e obtém o resultado
   }
 
-  // NOVO MÉTODO: Encontra um utilizador pelo seu ID
-  // Esta é a função que estava em falta e que a sua JwtStrategy precisa.
+  /**
+   * Encontra um utilizador pelo ID (usado para o GET /profile).
+   * Retorna o utilizador SEM a senha.
+   */
   async findOneById(id: string): Promise<Omit<User, 'password'> | null> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (user) {
@@ -42,5 +56,27 @@ export class UsersService {
       return result;
     }
     return null;
+  }
+
+  /**
+   * Encontra um utilizador pelo ID (usado para ATUALIZAR o perfil).
+   * Retorna o utilizador COM a senha (para verificação da senha atual).
+   */
+  async findOneByIdWithPassword(id: string): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id })
+      .addSelect('user.password')
+      .getOne();
+  }
+
+  /**
+   * Atualiza os dados do utilizador.
+   * CORREÇÃO: O tipo de retorno agora inclui '| null' para corrigir o erro TS2322.
+   */
+  async update(id: string, updateData: Partial<User>): Promise<Omit<User, 'password'> | null> {
+    await this.usersRepository.update(id, updateData);
+    // O findOneById pode retornar null, e agora a função aceita isso.
+    return this.findOneById(id);
   }
 }
