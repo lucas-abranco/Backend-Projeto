@@ -35,7 +35,7 @@ export class UsersService {
 
   /**
    * Encontra um utilizador pelo e-mail (usado para o LOGIN).
-   * Usa QueryBuilder para selecionar explicitamente a senha.
+   * CORREÇÃO: Usa QueryBuilder para selecionar explicitamente a senha.
    */
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository
@@ -59,6 +59,7 @@ export class UsersService {
   }
 
   /**
+   * NOVO MÉTODO (Faltante)
    * Encontra um utilizador pelo ID (usado para ATUALIZAR o perfil).
    * Retorna o utilizador COM a senha (para verificação da senha atual).
    */
@@ -71,8 +72,8 @@ export class UsersService {
   }
 
   /**
+   * NOVO MÉTODO (Faltante)
    * Atualiza os dados do utilizador.
-   * CORREÇÃO: O tipo de retorno agora inclui '| null' para corrigir o erro TS2322.
    */
   async update(id: string, updateData: Partial<User>): Promise<Omit<User, 'password'> | null> {
     await this.usersRepository.update(id, updateData);

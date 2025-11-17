@@ -1,9 +1,11 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+// Caminho: projeto-back/src/auth/auth.controller.ts
+import { Controller, Post, Body, Get, Patch, UseGuards, Request, ValidationPipe } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { CreateDriverDto } from './dto/create-driver.dto'; // 1. Importar o DTO do Entregador
+import { CreateDriverDto } from './dto/create-driver.dto';
 import { LoginDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto'; // 1. Importar o novo DTO
 
 @Controller('auth')
 export class AuthController {
@@ -11,7 +13,7 @@ export class AuthController {
 
   // --- Rotas de Cliente ---
   @Post('client/register')
-  registerClient(@Body() createUserDto: CreateUserDto) {
+  registerClient(@Body(ValidationPipe) createUserDto: CreateUserDto) {
     return this.authService.registerClient(createUserDto);
   }
 
@@ -20,21 +22,38 @@ export class AuthController {
     return this.authService.loginClient(loginDto.email, loginDto.password);
   }
 
-  // --- NOVAS Rotas de Entregador ---
-  @Post('driver/register') // 2. Rota para registar entregador
-  registerDriver(@Body() createDriverDto: CreateDriverDto) {
+  // --- Rotas de Entregador ---
+  @Post('driver/register')
+  registerDriver(@Body(ValidationPipe) createDriverDto: CreateDriverDto) {
     return this.authService.registerDriver(createDriverDto);
   }
 
-  @Post('driver/login') // 3. Rota para login de entregador
+  @Post('driver/login')
   loginDriver(@Body() loginDto: LoginDto) {
     return this.authService.loginDriver(loginDto.email, loginDto.password);
   }
 
-  // --- Rota de Perfil (Geral) ---
+  // --- Rotas de Perfil (Geral) ---
+  
   @UseGuards(AuthGuard('jwt'))
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  /**
+   * NOVO ENDPOINT (CORREÇÃO DO ERRO 404)
+   * Rota: PATCH /auth/profile
+   * Atualiza o perfil do utilizador (cliente ou entregador).
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('profile')
+  updateProfile(
+    @Request() req, // Obtém o 'user' do token
+    @Body(ValidationPipe) updateProfileDto: UpdateProfileDto, // Valida os dados
+  ) {
+    // A nossa JwtStrategy (que vamos rever) devolve { ...profile, type: '...' }
+    const { id, type } = req.user; 
+    return this.authService.updateProfile(id, type, updateProfileDto);
   }
 }

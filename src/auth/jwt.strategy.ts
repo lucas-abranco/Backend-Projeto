@@ -1,22 +1,22 @@
+// Caminho: projeto-back/src/auth/jwt.strategy.ts
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from 'src/users/users.service';
-import { DriversService } from 'src/drivers/drivers.service'; // 1. Importar o DriversService
+import { DriversService } from 'src/drivers/drivers.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private usersService: UsersService,
-    private driversService: DriversService, // 2. Injetar o DriversService
+    private driversService: DriversService,
     private configService: ConfigService,
   ) {
     const secret = configService.get<string>('JWT_SECRET');
     if (!secret) {
       throw new Error('A variável de ambiente JWT_SECRET não foi definida.');
     }
-
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -24,11 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // 3. O payload agora inclui o 'type'
+  // O payload do token (que criámos no auth.service) contém o 'type'
   async validate(payload: { sub: string; email: string; type: string }) {
     let userProfile;
 
-    // 4. Verifica o tipo de utilizador a partir do payload do token
+    // Procura na tabela correta com base no 'type'
     if (payload.type === 'driver') {
       userProfile = await this.driversService.findOneById(payload.sub);
     } else if (payload.type === 'client') {
@@ -36,10 +36,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     if (!userProfile) {
-      // 5. A mensagem de erro agora é mais genérica
       throw new UnauthorizedException('Token inválido ou utilizador não encontrado.');
     }
-    // Retorna o perfil do cliente OU do entregador
-    return userProfile;
+    
+    // CORREÇÃO: Retorna o perfil E o tipo.
+    // O 'req.user' no controlador será agora: { id: '...', name: '...', type: 'client' }
+    return { ...userProfile, type: payload.type };
   }
 }
